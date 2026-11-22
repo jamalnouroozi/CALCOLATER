@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ماشین حساب مهندسی</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧮</text></svg>">
+<style>
+:root{
+  --bg:#e8ecef;--body:#f6f8f9;--screen:#1c2a30;--screen-ink:#d9f2e6;--screen-dim:#7fa397;
+  --key:#ffffff;--key-ink:#1d2428;--fn:#dde6ea;--fn-ink:#24424f;--op:#c9d6dc;--op-ink:#1d2428;
+  --eq:#0f766e;--eq-ink:#fff;--cl:#f3d6d2;--cl-ink:#8a2a20;--shadow:#b9c4ca;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1417;--body:#182025;--screen:#0a1013;--screen-ink:#bff0d8;--screen-dim:#5f8678;
+    --key:#222d33;--key-ink:#e8eef1;--fn:#1d3540;--fn-ink:#a9d3e3;--op:#2f3d45;--op-ink:#e8eef1;
+    --eq:#14a094;--eq-ink:#04201d;--cl:#44221f;--cl-ink:#ffb4aa;--shadow:#06090b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1417;--body:#182025;--screen:#0a1013;--screen-ink:#bff0d8;--screen-dim:#5f8678;
+  --key:#222d33;--key-ink:#e8eef1;--fn:#1d3540;--fn-ink:#a9d3e3;--op:#2f3d45;--op-ink:#e8eef1;
+  --eq:#14a094;--eq-ink:#04201d;--cl:#44221f;--cl-ink:#ffb4aa;--shadow:#06090b;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);display:flex;align-items:center;justify-content:center;
+  font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding:16px}
+.calc{width:100%;max-width:380px;background:var(--body);border-radius:22px;padding:16px;
+  box-shadow:0 2px 0 var(--shadow),0 18px 40px -18px var(--shadow)}
+.screen{background:var(--screen);border-radius:14px;padding:12px 14px 10px;margin-bottom:14px;direction:ltr;text-align:right}
+.meta{display:flex;justify-content:space-between;align-items:center;color:var(--screen-dim);font-size:12px;min-height:18px}
+#expr{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:80%;font-variant-numeric:tabular-nums}
+#mode{font-weight:600;letter-spacing:.02em}
+#disp{color:var(--screen-ink);font-size:34px;font-variant-numeric:tabular-nums;overflow-x:auto;white-space:nowrap;min-height:46px;line-height:46px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;direction:ltr}
+button{font:inherit;font-size:16px;padding:0;height:48px;border:0;border-radius:11px;cursor:pointer;
+  background:var(--key);color:var(--key-ink);box-shadow:0 2px 0 var(--shadow);transition:transform .06s,box-shadow .06s}
+button:active{transform:translateY(2px);box-shadow:0 0 0 var(--shadow)}
+button:focus-visible{outline:3px solid var(--eq);outline-offset:2px}
+.fn{background:var(--fn);color:var(--fn-ink);font-size:14px}
+.op{background:var(--op);color:var(--op-ink);font-size:20px}
+.cl{background:var(--cl);color:var(--cl-ink)}
+.eq{background:var(--eq);color:var(--eq-ink);font-size:22px}
+.tall{grid-row:span 2;height:auto}
+@media (prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+</head>
+<body>
+<main class="calc" aria-label="ماشین حساب مهندسی">
+  <div class="screen">
+    <div class="meta"><span id="mode">DEG</span><span id="expr"></span></div>
+    <div id="disp" aria-live="polite">0</div>
+  </div>
+  <div class="grid" id="g"></div>
+</main>
+<script>
+let exp="", deg=true, ans=0, justEvaluated=false;
+const disp=document.getElementById("disp"), ex=document.getElementById("expr"), modeEl=document.getElementById("mode");
+const toRad=x=>deg?x*Math.PI/180:x, fromRad=x=>deg?x*180/Math.PI:x;
+const fact=n=>{if(n<0||!Number.isInteger(n)||n>170)return NaN;let r=1;for(let i=2;i<=n;i++)r*=i;return r};
+const F={
+  sin:x=>{const r=Math.sin(toRad(x));return Math.abs(r)<1e-15?0:r},
+  cos:x=>{const r=Math.cos(toRad(x));return Math.abs(r)<1e-15?0:r},
+  tan:x=>Math.tan(toRad(x)),
+  asin:x=>fromRad(Math.asin(x)),acos:x=>fromRad(Math.acos(x)),atan:x=>fromRad(Math.atan(x)),
+  ln:Math.log,log:Math.log10,sqrt:Math.sqrt,fact,
+  get pi(){return Math.PI},get e(){return Math.E},get ans(){return ans}
+};
+const keys=[
+  ["Deg","mode","fn"],["sin","sin(","fn"],["cos","cos(","fn"],["tan","tan(","fn"],["C","clear","cl"],
+  ["asin","asin(","fn"],["acos","acos(","fn"],["atan","atan(","fn"],["⌫","back","cl"],["÷","/","op"],
+  ["ln","ln(","fn"],["log","log(","fn"],["√","sqrt(","fn"],["xʸ","^","fn"],["×","*","op"],
+  ["π","pi","fn"],["e","e","fn"],["(","(","op"],[")",")","op"],["−","-","op"],
+  ["7","7",""],["8","8",""],["9","9",""],["n!","!","fn"],["+","+","op"],
+  ["4","4",""],["5","5",""],["6","6",""],["x²","^2","fn"],["1/x","1/(","fn"],
+  ["1","1",""],["2","2",""],["3","3",""],["Ans","ans","fn"],["=","=","eq tall"],
+  ["0","0",""],[".",".",""],["%","/100","fn"],["±","neg","fn"]
+];
+const g=document.getElementById("g");
+keys.forEach(([label,val,cls])=>{
+  const b=document.createElement("button");
+  b.type="button";b.textContent=label;b.className=cls;
+  if(val==="mode")b.id="modeBtn";
+  b.onclick=()=>press(val);
+  g.appendChild(b);
+});
+function calculate(s){
+  s=s.replace(/(\d+(?:\.\d+)?)!/g,"fact($1)").replace(/\^/g,"**");
+  if(!/^[0-9a-z+\-*\/().\s]*$/.test(s))throw new Error("bad");
+  s=s.replace(/[a-z]+/g,m=>{if(!(m in F))throw new Error("unknown");return "F."+m});
+  const r=new Function("F","return "+s)(F);
+  if(typeof r!=="number"||!isFinite(r))throw new Error("math");
+  return parseFloat(r.toPrecision(12));
+}
+function show(){disp.textContent=exp||"0"}
+function press(v){
+  if(v==="clear"){exp="";ex.textContent="";show();return}
+  if(v==="mode"){deg=!deg;modeEl.textContent=deg?"DEG":"RAD";document.getElementById("modeBtn").textContent=deg?"Deg":"Rad";return}
+  if(v==="back"){exp=exp.replace(/(asin\(|acos\(|atan\(|sin\(|cos\(|tan\(|ln\(|log\(|sqrt\(|pi|ans|.)$/,"");justEvaluated=false;show();return}
+  if(v==="neg"){exp=exp?"-("+exp+")":"-";show();return}
+  if(v==="="){
+    if(!exp)return;
+    try{ans=calculate(exp);ex.textContent=exp+" =";exp=String(ans);justEvaluated=true;show()}
+    catch(e){disp.textContent="خطا";exp="";ex.textContent=""}
+    return;
+  }
+  // after a result, a new number/function starts fresh; an operator continues
+  if(justEvaluated&&!/^[+\-*\/^!]|^\^|^\/100$/.test(v)){exp="";ex.textContent=""}
+  justEvaluated=false;
+  exp+=v;show();
+}
+document.addEventListener("keydown",e=>{
+  if(/^[0-9+\-*\/().^!]$/.test(e.key))press(e.key);
+  else if(e.key==="Enter"||e.key==="="){e.preventDefault();press("=")}
+  else if(e.key==="Backspace")press("back");
+  else if(e.key==="Escape")press("clear");
+});
+</script>
+</body>
+</html>
